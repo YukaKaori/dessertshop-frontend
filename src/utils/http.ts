@@ -1,7 +1,8 @@
-import axios from 'axios'
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import { config } from '@/config'
 import { resolveMockData } from '@/mock'
+import type { ApiResponse } from '@/types/api'
 
 const http = axios.create({
   baseURL: config.apiBaseUrl,
@@ -10,7 +11,7 @@ const http = axios.create({
 
 // 请求拦截器：自动注入 token
 http.interceptors.request.use(
-  (cfg) => {
+  (cfg: InternalAxiosRequestConfig) => {
     try {
       const loginUser = JSON.parse(localStorage.getItem('loginUser') || '{}')
       if (loginUser?.token) {
@@ -21,16 +22,16 @@ http.interceptors.request.use(
     }
     return cfg
   },
-  (error) => Promise.reject(error)
+  (error: AxiosError) => Promise.reject(error),
 )
 
 // 响应拦截器：统一错误处理
 http.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  (error: AxiosError) => {
     if (error.response) {
-      const { status } = error.response
-      const messages = {
+      const { status } = error.response as { status: number }
+      const messages: Record<number, string> = {
         400: '请求参数错误',
         401: '登录已过期，请重新登录',
         403: '没有权限执行此操作',
@@ -52,12 +53,12 @@ http.interceptors.response.use(
         if (config.isDev) {
           console.info(`[Mock] ${error.config?.url} → 使用本地 mock 数据`)
         }
-        return mockData
+        return mockData as ApiResponse
       }
       ElMessage.error('网络连接异常，请检查网络')
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default http
